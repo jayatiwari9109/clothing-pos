@@ -1,41 +1,25 @@
-const pool = require("../config/db");
+const pool = require('../config/db');
 
-// 1. Add New Expense (Rent, Bills, Salary, etc.)
-exports.createExpense = async (req, res) => {
-  const { category, amount, description, payment_mode } = req.body;
+const getExpenses = async (req, res) => {
   try {
-    const result = await pool.query(
-      `INSERT INTO expenses (category, amount, description, payment_mode)
-       VALUES ($1, $2, $3, $4) RETURNING *`,
-      [category, amount, description || null, payment_mode || 'CASH']
+    const resDb = await pool.query(`SELECT * FROM expenses ORDER BY id DESC`);
+    res.json(resDb.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+const addExpense = async (req, res) => {
+  try {
+    const { category, amount, description } = req.body;
+    const resDb = await pool.query(
+      `INSERT INTO expenses (category, amount, description) VALUES ($1, $2, $3) RETURNING *`,
+      [category, amount, description]
     );
-    res.status(201).json({ message: "Expense recorded successfully", expense: result.rows[0] });
+    res.json({ success: true, expense: resDb.rows[0] });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// 2. Get All Expenses (with optional date/category filter)
-exports.getExpenses = async (req, res) => {
-  try {
-    const result = await pool.query("SELECT * FROM expenses ORDER BY created_at DESC");
-    res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-// 3. Get Expense Summary (Total spent by category)
-exports.getExpenseSummary = async (req, res) => {
-  try {
-    const result = await pool.query(
-      `SELECT category, SUM(amount) as total_amount 
-       FROM expenses 
-       GROUP BY category 
-       ORDER BY total_amount DESC`
-    );
-    res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
+module.exports = { getExpenses, addExpense };

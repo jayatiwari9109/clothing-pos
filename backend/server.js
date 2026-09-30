@@ -25,6 +25,14 @@ app.get("/", (req, res) => {
   res.send("🚀 URBANWEAR POS & Inventory API Backend Engine Live!");
 });
 
+// backend/server.js
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+// Vercel serverless function ke liye exported hona zaroori hai
 module.exports = app;

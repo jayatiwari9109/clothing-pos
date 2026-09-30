@@ -1,11 +1,10 @@
-const { Pool } = require("pg");
-require("dotenv").config();
+const { Pool } = require('pg');
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
+  ssl: {
+    rejectUnauthorized: false // Neon PG connection crash rokne ke liye ZARURI hai
+  }
 });
-
-pool.on("connect", () => console.log("Connected to Neon PostgreSQL Database"));
 
 module.exports = pool;

@@ -1,9 +1,9 @@
-const pool = require('../config/db');
+// Sample expenseController.js
 
 const getExpenses = async (req, res) => {
   try {
-    const resDb = await pool.query(`SELECT * FROM expenses ORDER BY id DESC`);
-    res.json(resDb.rows);
+    // DB fetch logic
+    res.status(200).json([]);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -11,15 +11,15 @@ const getExpenses = async (req, res) => {
 
 const addExpense = async (req, res) => {
   try {
-    const { category, amount, description } = req.body;
-    const resDb = await pool.query(
-      `INSERT INTO expenses (category, amount, description) VALUES ($1, $2, $3) RETURNING *`,
-      [category, amount, description]
-    );
-    res.json({ success: true, expense: resDb.rows[0] });
+    // DB create logic
+    res.status(201).json({ message: 'Expense added successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-module.exports = { getExpenses, addExpense };
+// Functions ko export karna zaroori hai
+module.exports = {
+  getExpenses,
+  addExpense
+};

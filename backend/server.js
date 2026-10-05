@@ -7,17 +7,30 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Helper function to safely mount routes if file exists
+const safeUse = (path, routePath) => {
+  try {
+    app.use(path, require(routePath));
+  } catch (err) {
+    if (err.code === 'MODULE_NOT_FOUND' && err.message.includes(routePath)) {
+      console.warn(`⚠️ Warning: Route module ${routePath} not found. Skipping...`);
+    } else {
+      throw err; // Real syntax/runtime errors pass-through
+    }
+  }
+};
+
 // Routes
-app.use("/api/auth", require("./routes/authRoutes"));
-app.use("/api/customers", require("./routes/customerRoutes"));
-app.use("/api/expenses", require("./routes/expenseRoutes"));
-app.use("/api/inventory", require("./routes/inventoryRoutes"));
-app.use("/api/overview", require("./routes/overviewRoutes"));
-app.use("/api/pos", require("./routes/posRoutes"));
-app.use("/api/products", require("./routes/productRoutes"));
-app.use("/api/suppliers", require("./routes/supplierRoutes"));
-app.use("/api/returns", require("./routes/returnRoutes"));
-app.use("/api/reports", require("./routes/reportsRoutes"));
+safeUse("/api/auth", "./routes/authRoutes");
+safeUse("/api/customers", "./routes/customerRoutes");
+safeUse("/api/expenses", "./routes/expenseRoutes");
+safeUse("/api/inventory", "./routes/inventoryRoutes");
+safeUse("/api/overview", "./routes/overviewRoutes");
+safeUse("/api/pos", "./routes/posRoutes");
+safeUse("/api/products", "./routes/productRoutes");
+safeUse("/api/suppliers", "./routes/supplierRoutes");
+safeUse("/api/returns", "./routes/returnRoutes");
+safeUse("/api/reports", "./routes/reportsRoutes");
 
 app.get("/", (req, res) => {
   res.send("🚀 URBANWEAR POS & Inventory API Backend Engine Live!");

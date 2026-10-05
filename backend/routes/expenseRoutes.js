@@ -1,10 +1,14 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const { createExpense, getExpenses, getExpenseSummary } = require("../controllers/expenseController");
-const authMiddleware = require("../middleware/authMiddleware");
 
-router.post("/", authMiddleware, createExpense);
-router.get("/", authMiddleware, getExpenses);
-router.get("/summary", authMiddleware, getExpenseSummary);
+// Controller functions ko sahi se import karein
+const { 
+  getExpenses, 
+  addExpense 
+} = require('../controllers/expenseController'); // Path verify karein
+
+// Check karein ki second argument (addExpense) undefined toh nahi hai
+router.get('/', getExpenses);
+router.post('/', addExpense); 
 
 module.exports = router;

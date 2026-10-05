@@ -767,6 +767,9 @@ const fetchProducts = async () => {
   try {
     const res = await axios.get(`${API_BASE_URL}/api/products`);
     
+    // Debugging: Exact response structure print karke dekhein
+    console.log("Products API Raw Response:", res.data);
+
     if (Array.isArray(res.data)) {
       setProducts(res.data);
     } else if (res.data && Array.isArray(res.data.products)) {
@@ -774,18 +777,15 @@ const fetchProducts = async () => {
     } else if (res.data && Array.isArray(res.data.data)) {
       setProducts(res.data.data);
     } else {
-      throw new Error("Invalid response format");
+      throw new Error(`Expected array but got ${typeof res.data}`);
     }
   } catch (err) {
-    console.warn("fetchProducts API Error, loading fallback data:", err.message || err);
+    console.warn("fetchProducts API Error, loading fallback data:", err.message);
     setProducts([
       { id: 101, name: 'Slim Fit Cotton Shirt', category_name: 'Shirts', sku: 'SH-012', size: 'M', color: 'Blue', selling_price: 1200, total_stock: 12 },
-      { id: 102, name: 'Regular Denim Jeans', category_name: 'Jeans', sku: 'IN-005', size: '32', color: 'Dark Blue', selling_price: 1800, total_stock: 8 },
-      { id: 103, name: 'Graphic Printed Tee', category_name: 'T-Shirts', sku: 'TS-090', size: 'L', color: 'White', selling_price: 500, total_stock: 20 },
-      { id: 104, name: 'Casual Linen Shirt', category_name: 'Shirts', sku: 'SH-018', size: 'XL', color: 'Beige', selling_price: 1500, total_stock: 5 }
+      { id: 102, name: 'Regular Denim Jeans', category_name: 'Jeans', sku: 'IN-005', size: '32', color: 'Dark Blue', selling_price: 1800, total_stock: 8 }
     ]);
   }
-};
 
 const fetchOverviewData = async () => {
   try {

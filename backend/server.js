@@ -36,11 +36,13 @@ app.get("/", (req, res) => {
   res.send("🚀 URBANWEAR POS & Inventory API Backend Engine Live!");
 });
 
-// Port listen logic (Sirf Local Development ke liye)
-const PORT = process.env.PORT || 5000;
-if (require.main === module) {
-  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-}
+const cors = require("cors");
+
+app.use(cors({
+  origin: "*", // Testing ke liye allowed. Production par frontend URL paas karein.
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
 
 // Vercel Serverless Function Output
 module.exports = app;

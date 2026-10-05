@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
+// Dynamic API URL for local dev and production deployment
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 const POS = () => {
   const [cart, setCart] = useState([]);
   const [barcodeInput, setBarcodeInput] = useState('');
@@ -14,15 +17,17 @@ const POS = () => {
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
   const [newCustomer, setNewCustomer] = useState({ name: '', mobile: '', email: '', address: '' });
 
-  // Search Customers dynamically as user types
+  // Dynamic Customer Search
   useEffect(() => {
     const fetchCustomers = async () => {
       if (searchQuery.trim().length > 1) {
         try {
-          const res = await axios.get(`http://localhost:5000/api/customers/search?query=${searchQuery}`);
-          setCustomers(res.data);
+          const res = await axios.get(`${API_BASE_URL}/api/customers/search?query=${searchQuery}`);
+          const data = res.data;
+          setCustomers(Array.isArray(data) ? data : data.customers || []);
         } catch (err) {
           console.error("Error searching customers:", err);
+          setCustomers([]);
         }
       } else {
         setCustomers([]);
@@ -31,12 +36,72 @@ const POS = () => {
     fetchCustomers();
   }, [searchQuery]);
 
+  // Barcode Scan Handler
+  const handleBarcodeScan = async (e) => {
+    if (e.key === 'Enter' && barcodeInput.trim() !== '') {
+      e.preventDefault();
+      try {
+        const res = await axios.get(`${API_BASE_URL}/api/products/search?barcode=${barcodeInput.trim()}`);
+        const product = res.data;
+
+        if (product && (product.id || product._id)) {
+          const productId = product.id || product._id;
+          const existingIndex = cart.findIndex((item) => item.id === productId);
+
+          if (existingIndex > -1) {
+            const updatedCart = [...cart];
+            const updatedQty = updatedCart[existingIndex].quantity + 1;
+            updatedCart[existingIndex].quantity = updatedQty;
+            updatedCart[existingIndex].total_price = updatedQty * updatedCart[existingIndex].unit_price;
+            setCart(updatedCart);
+          } else {
+            const unitPrice = parseFloat(product.selling_price || product.price || 0);
+            setCart([
+              ...cart,
+              {
+                id: productId,
+                name: product.name || 'Unknown Product',
+                variant: product.variant || 'Standard',
+                quantity: 1,
+                unit_price: unitPrice,
+                total_price: unitPrice
+              }
+            ]);
+          }
+          setBarcodeInput('');
+        } else {
+          alert('Product not found for barcode: ' + barcodeInput);
+        }
+      } catch (err) {
+        alert('Error scanning product: ' + (err.response?.data?.error || err.message));
+      }
+    }
+  };
+
+  // Cart Quantity Controls
+  const updateQuantity = (index, delta) => {
+    const updatedCart = [...cart];
+    const newQty = updatedCart[index].quantity + delta;
+
+    if (newQty <= 0) {
+      updatedCart.splice(index, 1);
+    } else {
+      updatedCart[index].quantity = newQty;
+      updatedCart[index].total_price = newQty * updatedCart[index].unit_price;
+    }
+    setCart(updatedCart);
+  };
+
+  const removeItem = (index) => {
+    setCart(cart.filter((_, i) => i !== index));
+  };
+
   // Create Quick Customer
   const handleCreateCustomer = async (e) => {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.post('http://localhost:5000/api/customers', newCustomer, {
+      const res = await axios.post(`${API_BASE_URL}/api/customers`, newCustomer, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSelectedCustomer(res.data.customer || res.data);
@@ -49,7 +114,7 @@ const POS = () => {
   };
 
   // Calculations
-  const subtotal = cart.reduce((acc, item) => acc + item.total_price, 0);
+  const subtotal = cart.reduce((acc, item) => acc + (item.total_price || 0), 0);
   const tax = subtotal * 0.05; // 5% GST
   const finalTotal = Math.max(0, subtotal + tax - parseFloat(discount || 0));
 
@@ -77,11 +142,12 @@ const POS = () => {
         payment_method: paymentMethod
       };
 
-      const res = await axios.post('http://localhost:5000/api/pos/checkout', payload, {
+      const res = await axios.post(`${API_BASE_URL}/api/pos/checkout`, payload, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      alert(`Sale completed! Invoice No: ${res.data.invoice.invoice_number}`);
+      const invoiceNum = res.data?.invoice?.invoice_number || res.data?.invoice_number || 'N/A';
+      alert(`Sale completed! Invoice No: ${invoiceNum}`);
       setCart([]);
       setSelectedCustomer(null);
       setDiscount(0);
@@ -92,38 +158,48 @@ const POS = () => {
 
   return (
     <div style={{ display: 'flex', gap: '20px', padding: '20px', fontFamily: 'sans-serif' }}>
-      {/* Left Area: Barcode & Items */}
+      {/* Left Area: Barcode & Cart Table */}
       <div style={{ flex: 2 }}>
         <h2>Barcode Scanner & Cart</h2>
         <input
           type="text"
-          placeholder="Scan Barcode or enter SKU..."
+          placeholder="Scan Barcode or enter SKU & press Enter..."
           value={barcodeInput}
           onChange={(e) => setBarcodeInput(e.target.value)}
+          onKeyDown={handleBarcodeScan}
+          autoFocus
           style={{ width: '100%', padding: '10px', fontSize: '16px', marginBottom: '15px' }}
         />
 
-        <table border="1" cellPadding="10" style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <table border="1" cellPadding="10" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
           <thead>
-            <tr>
+            <tr style={{ background: '#f5f5f5' }}>
               <th>Item</th>
               <th>Variant</th>
               <th>Qty</th>
               <th>Price</th>
               <th>Total</th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody>
-            {cart.length === 0 ? (
-              <tr><td colSpan="5" style={{ textAlign: 'center' }}>Cart is empty</td></tr>
+            {!Array.isArray(cart) || cart.length === 0 ? (
+              <tr><td colSpan="6" style={{ textAlign: 'center' }}>Cart is empty</td></tr>
             ) : (
               cart.map((item, index) => (
-                <tr key={index}>
-                  <td>{item.name}</td>
+                <tr key={item.id || index}>
+                  <td><strong>{item.name}</strong></td>
                   <td>{item.variant}</td>
-                  <td>{item.quantity}</td>
+                  <td>
+                    <button onClick={() => updateQuantity(index, -1)} style={{ padding: '2px 6px', marginRight: '5px' }}>-</button>
+                    {item.quantity}
+                    <button onClick={() => updateQuantity(index, 1)} style={{ padding: '2px 6px', marginLeft: '5px' }}>+</button>
+                  </td>
                   <td>₹{item.unit_price}</td>
                   <td>₹{item.total_price}</td>
+                  <td>
+                    <button onClick={() => removeItem(index)} style={{ color: 'red', border: 'none', background: 'transparent', cursor: 'pointer' }}>Remove</button>
+                  </td>
                 </tr>
               ))
             )}
@@ -141,7 +217,7 @@ const POS = () => {
             <small>Credit Balance: ₹{selectedCustomer.credit_balance || 0}</small>
             <button 
               onClick={() => setSelectedCustomer(null)} 
-              style={{ display: 'block', marginTop: '5px', color: 'red', cursor: 'pointer' }}
+              style={{ display: 'block', marginTop: '5px', color: 'red', cursor: 'pointer', border: 'none', background: 'transparent' }}
             >
               Remove
             </button>
@@ -155,11 +231,11 @@ const POS = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{ width: '100%', padding: '8px', marginBottom: '5px' }}
             />
-            {customers.length > 0 && (
+            {Array.isArray(customers) && customers.length > 0 && (
               <ul style={{ border: '1px solid #ddd', listStyle: 'none', padding: '5px', margin: 0, maxHeight: '100px', overflowY: 'auto' }}>
                 {customers.map((c) => (
                   <li 
-                    key={c.id} 
+                    key={c.id || c._id} 
                     onClick={() => { setSelectedCustomer(c); setCustomers([]); setSearchQuery(''); }}
                     style={{ padding: '5px', cursor: 'pointer', borderBottom: '1px solid #eee' }}
                   >
@@ -213,7 +289,7 @@ const POS = () => {
           Complete Sale & Print Receipt
         </button>
 
-        {/* Quick Add Customer Form */}
+        {/* Quick Add Customer Modal */}
         {showAddCustomerModal && (
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
             <div style={{ background: '#fff', padding: '20px', borderRadius: '8px', width: '300px' }}>

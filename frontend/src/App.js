@@ -763,88 +763,130 @@ function App() {
     }
   };
 
-  // API Call Helpers
-  const fetchProducts = async () => {
-    try {
-      const res = await axios.get(`${API_BASE_URL}/api/products`);
+// API Call Helpers (Safe & Fixed Version)
+const fetchProducts = async () => {
+  try {
+    const res = await axios.get(`${API_BASE_URL}/api/products`);
+    // Check karein ki response Array hai ya nahi
+    if (Array.isArray(res.data)) {
       setProducts(res.data);
-    } catch (err) {
-      setProducts([
-        { id: 101, name: 'Slim Fit Cotton Shirt', category_name: 'Shirts', sku: 'SH-012', size: 'M', color: 'Blue', selling_price: 1200, total_stock: 12 },
-        { id: 102, name: 'Regular Denim Jeans', category_name: 'Jeans', sku: 'IN-005', size: '32', color: 'Dark Blue', selling_price: 1800, total_stock: 8 },
-        { id: 103, name: 'Graphic Printed Tee', category_name: 'T-Shirts', sku: 'TS-090', size: 'L', color: 'White', selling_price: 500, total_stock: 20 },
-        { id: 104, name: 'Casual Linen Shirt', category_name: 'Shirts', sku: 'SH-018', size: 'XL', color: 'Beige', selling_price: 1500, total_stock: 5 }
-      ]);
+    } else if (res.data && Array.isArray(res.data.products)) {
+      setProducts(res.data.products);
+    } else {
+      throw new Error("Invalid response format");
     }
-  };
+  } catch (err) {
+    console.warn("fetchProducts API Error, loading fallback data:", err);
+    setProducts([
+      { id: 101, name: 'Slim Fit Cotton Shirt', category_name: 'Shirts', sku: 'SH-012', size: 'M', color: 'Blue', selling_price: 1200, total_stock: 12 },
+      { id: 102, name: 'Regular Denim Jeans', category_name: 'Jeans', sku: 'IN-005', size: '32', color: 'Dark Blue', selling_price: 1800, total_stock: 8 },
+      { id: 103, name: 'Graphic Printed Tee', category_name: 'T-Shirts', sku: 'TS-090', size: 'L', color: 'White', selling_price: 500, total_stock: 20 },
+      { id: 104, name: 'Casual Linen Shirt', category_name: 'Shirts', sku: 'SH-018', size: 'XL', color: 'Beige', selling_price: 1500, total_stock: 5 }
+    ]);
+  }
+};
 
-  const fetchOverviewData = async () => {
-    try {
-      const res = await axios.get(`${API_BASE_URL}/api/overview/metrics`);
-      if (res.data.success) {
-        setOverviewMetrics(res.data.metrics);
-        setRecentInvoices(res.data.recentInvoices);
-      }
-    } catch (err) {
-      setOverviewMetrics({ total_sales: 14250, total_orders: 16, total_udhaar: 3200, total_customers: 18, low_stock_count: 2 });
-      setRecentInvoices([
-        { invoice_number: 'INV-1002', customer_name: 'Rahul Sharma', grand_total: 2520, payment_method: 'CASH' },
-        { invoice_number: 'INV-1001', customer_name: 'Amit Verma', grand_total: 1800, payment_method: 'CREDIT_UDHAAR' }
-      ]);
+const fetchOverviewData = async () => {
+  try {
+    const res = await axios.get(`${API_BASE_URL}/api/overview/metrics`);
+    if (res.data && res.data.success) {
+      setOverviewMetrics(res.data.metrics || {});
+      setRecentInvoices(Array.isArray(res.data.recentInvoices) ? res.data.recentInvoices : []);
+    } else {
+      throw new Error("Metrics fetch failed");
     }
-  };
+  } catch (err) {
+    console.warn("fetchOverviewData API Error, loading fallback data:", err);
+    setOverviewMetrics({ total_sales: 14250, total_orders: 16, total_udhaar: 3200, total_customers: 18, low_stock_count: 2 });
+    setRecentInvoices([
+      { invoice_number: 'INV-1002', customer_name: 'Rahul Sharma', grand_total: 2520, payment_method: 'CASH' },
+      { invoice_number: 'INV-1001', customer_name: 'Amit Verma', grand_total: 1800, payment_method: 'CREDIT_UDHAAR' }
+    ]);
+  }
+};
 
-  const fetchInventoryData = async () => {
-    try {
-      const res = await axios.get(`${API_BASE_URL}/api/inventory`);
-      if (res.data.success) setInventoryList(res.data.data);
-    } catch (err) {
-      setInventoryList([
-        { id: 101, name: 'Slim Fit Cotton Shirt', sku: 'SH-012', category_name: 'Shirts', size: 'M', color: 'Blue', selling_price: 1200, cost_price: 700, total_stock: 12 },
-        { id: 102, name: 'Regular Denim Jeans', sku: 'IN-005', category_name: 'Jeans', size: '32', color: 'Dark Blue', selling_price: 1800, cost_price: 1100, total_stock: 8 }
-      ]);
+const fetchInventoryData = async () => {
+  try {
+    const res = await axios.get(`${API_BASE_URL}/api/inventory`);
+    if (res.data && Array.isArray(res.data.data)) {
+      setInventoryList(res.data.data);
+    } else if (Array.isArray(res.data)) {
+      setInventoryList(res.data);
+    } else {
+      throw new Error("Invalid inventory format");
     }
-  };
+  } catch (err) {
+    console.warn("fetchInventoryData API Error, loading fallback data:", err);
+    setInventoryList([
+      { id: 101, name: 'Slim Fit Cotton Shirt', sku: 'SH-012', category_name: 'Shirts', size: 'M', color: 'Blue', selling_price: 1200, cost_price: 700, total_stock: 12 },
+      { id: 102, name: 'Regular Denim Jeans', sku: 'IN-005', category_name: 'Jeans', size: '32', color: 'Dark Blue', selling_price: 1800, cost_price: 1100, total_stock: 8 }
+    ]);
+  }
+};
 
-  const fetchCustomerList = async () => {
-    try {
-      const res = await axios.get(`${API_BASE_URL}/api/customers`);
+const fetchCustomerList = async () => {
+  try {
+    const res = await axios.get(`${API_BASE_URL}/api/customers`);
+    if (Array.isArray(res.data)) {
       setCustomerList(res.data);
-    } catch (err) {
-      setCustomerList([
-        { id: 1, name: 'Amit Verma', mobile: '9876543210', current_balance: 1800 },
-        { id: 2, name: 'Rahul Sharma', mobile: '9123456789', current_balance: 0 }
-      ]);
+    } else {
+      throw new Error("Invalid customer data");
     }
-  };
+  } catch (err) {
+    console.warn("fetchCustomerList API Error, loading fallback data:", err);
+    setCustomerList([
+      { id: 1, name: 'Amit Verma', mobile: '9876543210', current_balance: 1800 },
+      { id: 2, name: 'Rahul Sharma', mobile: '9123456789', current_balance: 0 }
+    ]);
+  }
+};
 
-  const fetchSuppliers = async () => {
+const fetchSuppliers = async () => {
+  try {
+    const res = await axios.get(`${API_BASE_URL}/api/suppliers`);
+    if (Array.isArray(res.data)) {
+      setSuppliers(res.data);
+    } else {
+      throw new Error("Invalid suppliers data");
+    }
+  } catch (err) {
     setSuppliers([
       { id: 1, name: 'Vardhman Textiles Ltd', phone: '9822011223', company: 'Fabric Supplier' },
       { id: 2, name: 'Raymond Retail Wholesaler', phone: '9765432100', company: 'Shirt Distributor' }
     ]);
-  };
+  }
+};
 
-  const fetchExpenses = async () => {
-    try {
-      const res = await axios.get(`${API_BASE_URL}/api/expenses`);
+const fetchExpenses = async () => {
+  try {
+    const res = await axios.get(`${API_BASE_URL}/api/expenses`);
+    if (Array.isArray(res.data)) {
       setExpensesList(res.data);
-    } catch (err) {
-      setExpensesList([
-        { id: 1, category: 'Rent', amount: 15000, description: 'Monthly Shop Rent' },
-        { id: 2, category: 'Electricity', amount: 2400, description: 'Store Electricity Bill' }
-      ]);
+    } else {
+      throw new Error("Invalid expenses response");
     }
-  };
+  } catch (err) {
+    console.warn("fetchExpenses API Error, loading fallback data:", err);
+    setExpensesList([
+      { id: 1, category: 'Rent', amount: 15000, description: 'Monthly Shop Rent' },
+      { id: 2, category: 'Electricity', amount: 2400, description: 'Store Electricity Bill' }
+    ]);
+  }
+};
 
-  const fetchReports = async () => {
-    try {
-      const res = await axios.get(`${API_BASE_URL}/api/reports/sales`);
-      if (res.data.success) setReportsData(res.data);
-    } catch (err) {
-      setReportsData({ grossSales: 41200, totalGST: 2060, netProfit: 23800, totalBills: 31 });
+const fetchReports = async () => {
+  try {
+    const res = await axios.get(`${API_BASE_URL}/api/reports/sales`);
+    if (res.data && res.data.grossSales !== undefined) {
+      setReportsData(res.data);
+    } else {
+      throw new Error("Invalid reports response");
     }
-  };
+  } catch (err) {
+    console.warn("fetchReports API Error, loading fallback data:", err);
+    setReportsData({ grossSales: 41200, totalGST: 2060, netProfit: 23800, totalBills: 31 });
+  }
+};
 
   // Cart Management
   const addToCart = (product) => {

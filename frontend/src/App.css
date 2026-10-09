@@ -36,3 +36,62 @@
     transform: rotate(360deg);
   }
 }
+/* Sidebar Responsive Logic */
+@media (max-width: 992px) {
+  .main-layout {
+    flex-direction: column !important;
+  }
+  
+  .sidebar-container {
+    width: 100% !important;
+    height: auto !important;
+    padding: 12px 20px !important;
+  }
+
+  .sidebar-menu {
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  .sidebar-menu button {
+    padding: 8px 12px !important;
+    font-size: 12px !important;
+  }
+}
+
+/* POS Counter Split Grid Responsive */
+@media (max-width: 850px) {
+  .pos-container {
+    flex-direction: column-reverse !important;
+    overflow-y: auto !important;
+  }
+
+  .pos-cart-panel, .pos-product-grid {
+    flex: none !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .overview-metrics-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .overview-payment-grid {
+    grid-template-columns: repeat(1, 1fr) !important;
+  }
+
+  .overview-flex-row {
+    flex-direction: column !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .overview-metrics-grid {
+    grid-template-columns: repeat(1, 1fr) !important;
+  }
+
+  .product-grid-columns {
+    grid-template-columns: repeat(1, 1fr) !important;
+  }
+}

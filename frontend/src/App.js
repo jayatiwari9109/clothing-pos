@@ -14,6 +14,8 @@ import SupplierManagement from './pages/SupplierManagement';
 import Overview from './pages/Overview';
 import ExpenseManagement from './pages/ExpenseManagement';
 import Settings from './pages/Settings';
+import EmployeeManagement from './pages/EmployeeManagement';
+import Reports from './pages/Reports';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://clothing-pos-backend.vercel.app';
 
@@ -115,8 +117,10 @@ function App() {
     e.preventDefault();
     if (loginEmail === 'admin@urbanwear.com' && loginPass === 'admin123') {
       setUser({ name: 'Rohit Sharma', role: 'Super Admin', email: loginEmail });
+    } else if (loginEmail === 'cashier@urbanwear.com') {
+      setUser({ name: 'Cashier Staff', role: 'Cashier', email: loginEmail });
     } else {
-      setUser({ name: 'Cashier Staff', role: 'Cashier', email: loginEmail || 'cashier@urbanwear.com' });
+      setUser({ name: 'Staff Member', role: 'Employee', email: loginEmail || 'staff@urbanwear.com' });
     }
   };
 
@@ -424,40 +428,44 @@ function App() {
             </div>
           </div>
 
+          {/* Role-Based Sidebar Navigation Links */}
           <div className="sidebar-menu" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             {[
-              'POS & Billing',
-              'Overview',
-              'Inventory & Stock Metrics',
-              'Customer Ledger',
-              'Supplier Management',
-              'Expense Management',
-              'Settings',
-            ].map((item) => (
-              <button
-                key={item}
-                onClick={() => setActiveTab(item)}
-                style={{
-                  textAlign: 'left',
-                  padding: '11px 14px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  backgroundColor: activeTab === item ? '#154d3e' : 'transparent',
-                  color: activeTab === item ? '#fff' : '#a2c7bc',
-                  fontWeight: activeTab === item ? '600' : 'normal',
-                  cursor: 'pointer',
-                  fontSize: '13px',
-                }}
-              >
-                {item}
-              </button>
-            ))}
+  { name: 'POS & Billing', roles: ['Super Admin', 'Cashier', 'Employee'] },
+  { name: 'Inventory & Stock Metrics', roles: ['Super Admin', 'Employee'] },
+  { name: 'Customer Ledger', roles: ['Super Admin', 'Cashier'] },
+  { name: 'Overview', roles: ['Super Admin'] },
+  { name: 'Supplier Management', roles: ['Super Admin'] },
+  { name: 'Expense Management', roles: ['Super Admin'] },
+  { name: 'Employee Management', roles: ['Super Admin'] },
+  { name: 'Reports & Analytics', roles: ['Super Admin'] },
+  { name: 'Settings', roles: ['Super Admin'] },
+]
+              .filter((item) => item.roles.includes(user.role))
+              .map((item) => (
+                <button
+                  key={item.name}
+                  onClick={() => setActiveTab(item.name)}
+                  style={{
+                    textAlign: 'left',
+                    padding: '11px 14px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    backgroundColor: activeTab === item.name ? '#154d3e' : 'transparent',
+                    color: activeTab === item.name ? '#fff' : '#a2c7bc',
+                    fontWeight: activeTab === item.name ? '600' : 'normal',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                  }}
+                >
+                  {item.name}
+                </button>
+              ))}
           </div>
         </div>
 
         {/* SIDEBAR FOOTER WITH LIVE CLOCK & DATE */}
         <div style={{ paddingTop: '15px', borderTop: '1px solid #1a4a3d' }}>
-          
           <div style={{ marginBottom: '12px', background: '#07241c', padding: '8px 12px', borderRadius: '6px', border: '1px solid #134e3a' }}>
             <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#10b981' }}>
               🕒 {currentDateTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
@@ -491,9 +499,13 @@ function App() {
             </span>
           </div>
           <div style={{ display: 'flex', gap: '10px' }}>
-            <button onClick={() => setShowSupplierModal(true)} style={headerBtnStyle}>🏭 Suppliers</button>
-            <button onClick={() => setShowAddCustomerModal(true)} style={headerBtnStyle}>👤 + Customer</button>
-            <button onClick={() => setShowAddProductModal(true)} style={{ ...headerBtnStyle, background: '#0a3227', color: '#fff' }}>📦 + Product</button>
+            {user.role === 'Super Admin' && (
+              <>
+                <button onClick={() => setShowSupplierModal(true)} style={headerBtnStyle}>🏭 Suppliers</button>
+                <button onClick={() => setShowAddCustomerModal(true)} style={headerBtnStyle}>👤 + Customer</button>
+                <button onClick={() => setShowAddProductModal(true)} style={{ ...headerBtnStyle, background: '#0a3227', color: '#fff' }}>📦 + Product</button>
+              </>
+            )}
           </div>
         </div>
 
@@ -634,7 +646,7 @@ function App() {
               </div>
             </div>
           </div>
-        ) : activeTab === 'Overview' ? (
+        ) : activeTab === 'Overview' && user.role === 'Super Admin' ? (
           <Overview
             products={products}
             customers={customerList}
@@ -652,20 +664,27 @@ function App() {
             customers={customerList}
             onReceivePayment={handleReceiveUdhaarPayment}
           />
-        ) : activeTab === 'Supplier Management' ? (
+        ) : activeTab === 'Supplier Management' && user.role === 'Super Admin' ? (
           <SupplierManagement
             suppliers={suppliers}
             onOpenSupplierModal={() => setShowSupplierModal(true)}
           />
-        ) : activeTab === 'Expense Management' ? (
+        ) : activeTab === 'Expense Management' && user.role === 'Super Admin' ? (
           <ExpenseManagement />
-        ) : activeTab === 'Settings' ? (
+        ) : activeTab === 'Employee Management' && user.role === 'Super Admin' ? (
+          <EmployeeManagement />
+        ) : activeTab === 'Reports & Analytics' && user.role === 'Super Admin' ? (
+          <Reports
+            storeConfig={storeConfig}
+            recentInvoices={recentInvoices}
+          />
+        ) : activeTab === 'Settings' && user.role === 'Super Admin' ? (
           <Settings
             storeConfig={storeConfig}
             onSaveConfig={(updated) => setStoreConfig(updated)}
           />
         ) : (
-          <div style={{ padding: '30px' }}>Module View Under Development</div>
+          <div style={{ padding: '30px' }}>Access Restricted / Module View Under Development</div>
         )}
 
       </div>

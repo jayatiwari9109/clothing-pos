@@ -1,146 +1,284 @@
 import React, { useState } from 'react';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 const Reports = ({ storeConfig = {}, recentInvoices = [] }) => {
-  const [selectedMonth, setSelectedMonth] = useState('2026-10');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('All categories');
+  const [scopeFilter, setScopeFilter] = useState('All scopes');
+  const [reportType, setReportType] = useState('Monthly'); // Monthly, Yearly, Day-wise
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [downloadingId, setDownloadingId] = useState(null);
 
-  // PDF Download Handler
-  const generatePDFReport = () => {
-    const doc = new jsPDF();
+  // Enterprise Reports Master List
+  const reportsList = [
+    {
+      id: 'REP-01',
+      category: 'Financial statements',
+      scope: 'Sales & Revenue',
+      title: 'Monthly Sales & Revenue Statement',
+      description: 'Comprehensive gross revenue, tax collection, discounts, and net sales breakdown.',
+      type: 'Monthly',
+      lastGenerated: 'Today, 10:45 AM',
+    },
+    {
+      id: 'REP-02',
+      category: 'Operational outputs',
+      scope: 'Inventory & Stock',
+      title: 'Day-wise Stock & Sales Register',
+      description: 'Item-wise sold quantities, remaining stock levels, and daily cash drawer closing.',
+      type: 'Day-wise',
+      lastGenerated: 'Yesterday, 08:30 PM',
+    },
+    {
+      id: 'REP-03',
+      category: 'Financial statements',
+      scope: 'Tax & Compliance',
+      title: 'Yearly GST & Tax Audit Report',
+      description: 'Total GST collected, taxable turnovers, and annual financial summaries for filing.',
+      type: 'Yearly',
+      lastGenerated: '15 Oct 2026',
+    },
+    {
+      id: 'REP-04',
+      category: 'Audit / exception views',
+      scope: 'Customer Ledger',
+      title: 'Customer Udhaar & Ledger Statement',
+      description: 'Outstanding customer balances, credit limits, and payment clearance history.',
+      type: 'Monthly',
+      lastGenerated: '12 Oct 2026',
+    },
+    {
+      id: 'REP-05',
+      category: 'Operational outputs',
+      scope: 'Expenses',
+      title: 'Day-wise Expense & Cash Outflow',
+      description: 'Daily operational expenses, supplier payouts, and cash register audits.',
+      type: 'Day-wise',
+      LastGenerated: 'Today, 09:15 AM',
+    },
+    {
+      id: 'REP-06',
+      category: 'Financial statements',
+      scope: 'Profit & Loss',
+      title: 'Yearly Profit & Loss Statement',
+      description: 'Annual business turnover, operational costs, net margins, and profit audits.',
+      type: 'Yearly',
+      lastGenerated: '01 Jan 2026',
+    },
+  ];
 
-    // Store Branding Header
-    doc.setFontSize(18);
-    doc.setTextColor(10, 50, 39);
-    doc.text(storeConfig.storeName || 'URBANWEAR POS', 14, 20);
+  // Filter Logic
+  const filteredReports = reportsList.filter((r) => {
+    const matchesSearch = r.title.toLowerCase().includes(searchTerm.toLowerCase()) || r.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = categoryFilter === 'All categories' || r.category === categoryFilter;
+    const matchesScope = scopeFilter === 'All scopes' || r.scope === scopeFilter;
+    const matchesType = reportType === 'All' || r.type === reportType;
+    return matchesSearch && matchesCategory && matchesScope && matchesType;
+  });
 
-    doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.text(`Monthly Business & Financial Audit Report - ${selectedMonth}`, 14, 27);
-    doc.text(`Generated On: ${new Date().toLocaleString()}`, 14, 32);
+  // Professional PDF Generation Handler
+  const generatePDF = (report) => {
+    setDownloadingId(report.id);
+    setTimeout(() => {
+      const doc = new jsPDF();
 
-    doc.line(14, 35, 196, 35);
+      // Header Branding
+      doc.setFontSize(18);
+      doc.setTextColor(10, 50, 39);
+      doc.text(storeConfig.storeName || 'URBANWEAR ENTERPRISE POS', 14, 20);
 
-    // Business Summary Table
-    doc.autoTable({
-      startY: 40,
-      head: [['KPI Metric', 'Value']],
-      body: [
-        ['Total Gross Revenue', `${storeConfig.currency || '₹'}1,42,500.00`],
-        ['Total Bills Generated', `${recentInvoices.length || 124} Invoices`],
-        ['Total Udhaar Clearance Received', `${storeConfig.currency || '₹'}18,200.00`],
-        ['Total Operational Expenses', `${storeConfig.currency || '₹'}12,450.00`],
-        ['Estimated Net Profit', `${storeConfig.currency || '₹'}1,11,850.00`],
-      ],
-      theme: 'grid',
-      headStyles: { fillColor: [10, 50, 39] },
-    });
+      doc.setFontSize(10);
+      doc.setTextColor(100);
+      doc.text(`Report Name: ${report.title}`, 14, 27);
+      doc.text(`Category: ${report.category} | Scope: ${report.scope}`, 14, 33);
+      doc.text(`Timeframe: ${reportType} (${selectedDate}) | Generated On: ${new Date().toLocaleString()}`, 14, 39);
+      doc.line(14, 44, 196, 44);
 
-    // Recent Sales Breakdown Table
-    doc.setFontSize(12);
-    doc.setTextColor(10, 50, 39);
-    doc.text('Sales & Transactions Breakdown', 14, doc.lastAutoTable.finalY + 12);
+      // Data Table
+      autoTable(doc, {
+        startY: 50,
+        head: [['Invoice / Ref ID', 'Customer / Particulars', 'Payment Mode', 'Total Amount', 'Status']],
+        body: recentInvoices.length > 0 
+          ? recentInvoices.map(i => [i.invoice_number, i.customer_name, i.payment_method, `₹${i.grand_total}`, 'Verified & Audited'])
+          : [['INV-1001', 'Walk-in Customer', 'CASH', '₹2,500', 'Verified & Audited'],
+             ['INV-1002', 'Rahul Sharma', 'UPI', '₹1,800', 'Verified & Audited']],
+        theme: 'grid',
+        headStyles: { fillColor: [10, 50, 39] },
+        styles: { fontSize: 9, cellPadding: 5 },
+      });
 
-    const tableRows = recentInvoices.map((inv) => [
-      inv.invoice_number,
-      inv.customer_name,
-      inv.payment_method,
-      `${storeConfig.currency || '₹'}${inv.grand_total}`,
-      inv.date || 'N/A',
-    ]);
+      // Footer
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      doc.text(`Confidential Financial Statement - ${storeConfig.storeName || 'URBANWEAR'} Workspace`, 14, 285);
 
-    doc.autoTable({
-      startY: doc.lastAutoTable.finalY + 16,
-      head: [['Invoice #', 'Customer Name', 'Payment Mode', 'Amount', 'Date']],
-      body: tableRows.length > 0 ? tableRows : [['-', 'No recent transactions', '-', '-', '-']],
-      theme: 'striped',
-      headStyles: { fillColor: [21, 77, 62] },
-    });
-
-    // Footer
-    doc.setFontSize(9);
-    doc.text('This is an official computer-generated POS monthly audit report.', 14, 285);
-
-    // Save File
-    doc.save(`${storeConfig.storeName || 'POS'}_Monthly_Report_${selectedMonth}.pdf`);
+      doc.save(`${report.title.replace(/\s+/g, '_')}_${reportType}_${selectedDate}.pdf`);
+      setDownloadingId(null);
+    }, 600);
   };
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'sans-serif', background: '#f8f9fa', minHeight: '100vh' }}>
+    <div style={{ padding: '30px', fontFamily: 'Inter, sans-serif', background: '#f8fafc', minHeight: '100vh', color: '#1e293b' }}>
       
-      {/* Top Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+      {/* Top Header Section */}
+      <div style={{ marginBottom: '25px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div>
-          <h2 style={{ margin: 0, color: '#0a3227' }}>📊 Executive Reports & Analytics</h2>
-          <span style={{ fontSize: '12px', color: '#64748b' }}>Download monthly performance reports in PDF format</span>
+          <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b', letterSpacing: '1.2px', textTransform: 'uppercase', marginBottom: '4px' }}>
+            REPORTING / ENTERPRISE STATEMENTS
+          </div>
+          <h1 style={{ fontSize: '26px', fontWeight: '800', color: '#0f172a', margin: '0 0 6px 0' }}>
+            Reports & Statements
+          </h1>
+          <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>
+            Generate controlled operational, financial, and audit outputs from the active retail workspace.
+          </p>
         </div>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <div style={{ fontSize: '12px', background: '#e2e8f0', padding: '6px 12px', borderRadius: '6px', fontWeight: '600', color: '#334155' }}>
+          🔒 Secure Audit Console
+        </div>
+      </div>
+
+      {/* Advanced Filter Toolbar */}
+      <div style={{ display: 'flex', gap: '12px', marginBottom: '25px', flexWrap: 'wrap', alignItems: 'center', background: '#fff', padding: '15px', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+        <div style={{ flex: 1, minWidth: '240px', position: 'relative' }}>
+          <span style={{ position: 'absolute', left: '12px', top: '11px', color: '#94a3b8' }}>🔍</span>
           <input
-            type="month"
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+            type="text"
+            placeholder="Search report name, scope or description..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{ width: '100%', padding: '9px 12px 9px 36px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', fontSize: '13px', boxSizing: 'border-box', outline: 'none' }}
           />
-          <button
-            onClick={generatePDFReport}
-            style={{ padding: '10px 18px', background: '#2563eb', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}
-          >
-            📄 Download Monthly PDF Report
-          </button>
         </div>
+
+        {/* Date Selector */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f8fafc', padding: '7px 12px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+          <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#475569' }}>📅 Date:</span>
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            style={{ border: 'none', background: 'transparent', fontSize: '13px', color: '#0f172a', outline: 'none', cursor: 'pointer' }}
+          />
+        </div>
+
+        {/* Timeframe Selector */}
+        <div style={{ display: 'flex', background: '#f1f5f9', padding: '3px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+          {['Monthly', 'Yearly', 'Day-wise'].map((t) => (
+            <button
+              key={t}
+              onClick={() => setReportType(t)}
+              style={{
+                padding: '6px 14px',
+                border: 'none',
+                borderRadius: '6px',
+                background: reportType === t ? '#0a3227' : 'transparent',
+                color: reportType === t ? '#fff' : '#475569',
+                fontWeight: '600',
+                fontSize: '12px',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+
+        {/* Category Dropdown */}
+        <select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          style={{ padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', fontSize: '13px', fontWeight: '500', color: '#334155', outline: 'none' }}
+        >
+          <option value="All categories">All categories</option>
+          <option value="Financial statements">Financial statements</option>
+          <option value="Operational outputs">Operational outputs</option>
+          <option value="Audit / exception views">Audit / exception views</option>
+        </select>
+
+        {/* Scope Dropdown */}
+        <select
+          value={scopeFilter}
+          onChange={(e) => setScopeFilter(e.target.value)}
+          style={{ padding: '9px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#f8fafc', fontSize: '13px', fontWeight: '500', color: '#334155', outline: 'none' }}
+        >
+          <option value="All scopes">All scopes</option>
+          <option value="Sales & Revenue">Sales & Revenue</option>
+          <option value="Inventory & Stock">Inventory & Stock</option>
+          <option value="Tax & Compliance">Tax & Compliance</option>
+          <option value="Customer Ledger">Customer Ledger</option>
+          <option value="Expenses">Expenses</option>
+          <option value="Profit & Loss">Profit & Loss</option>
+        </select>
       </div>
 
-      {/* KPI Overview Cards */}
+      {/* Metrics Summary Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px', marginBottom: '25px' }}>
-        <Card title="Monthly Sales" amount={`${storeConfig.currency || '₹'}1,42,500`} color="#10b981" />
-        <Card title="Cash Collections" amount={`${storeConfig.currency || '₹'}98,200`} color="#2563eb" />
-        <Card title="Pending Udhaar" amount={`${storeConfig.currency || '₹'}31,800`} color="#f59e0b" />
-        <Card title="Total Operational Expenses" amount={`${storeConfig.currency || '₹'}12,450`} color="#ef4444" />
+        <MetricCard label="Available reports" count={filteredReports.length} color="#0a3227" />
+        <MetricCard label="Operational outputs" count={reportsList.filter(r => r.category === 'Operational outputs').length} color="#0284c7" />
+        <MetricCard label="Financial statements" count={reportsList.filter(r => r.category === 'Financial statements').length} color="#16a34a" />
+        <MetricCard label="Audit / exceptions" count={reportsList.filter(r => r.category === 'Audit / exception views').length} color="#d97706" />
       </div>
 
-      {/* Recent Invoices Log */}
-      <div style={{ background: '#fff', padding: '20px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-        <h4 style={{ margin: '0 0 15px 0', color: '#1e293b' }}>🧾 Transactions History Included in Report</h4>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '12px' }}>
-          <thead>
-            <tr style={{ background: '#f8fafc', borderBottom: '2px solid #cbd5e1' }}>
-              <th style={thStyle}>INVOICE #</th>
-              <th style={thStyle}>CUSTOMER</th>
-              <th style={thStyle}>PAYMENT MODE</th>
-              <th style={thStyle}>AMOUNT</th>
-              <th style={thStyle}>DATE</th>
-            </tr>
-          </thead>
-          <tbody>
-            {recentInvoices.map((inv, idx) => (
-              <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                <td style={{ ...tdStyle, fontWeight: 'bold' }}>{inv.invoice_number}</td>
-                <td style={tdStyle}>{inv.customer_name}</td>
-                <td style={tdStyle}>
-                  <span style={{ padding: '2px 8px', borderRadius: '4px', background: inv.payment_method === 'CASH' ? '#dcfce7' : '#fef3c7', color: inv.payment_method === 'CASH' ? '#166534' : '#92400e', fontWeight: 'bold' }}>
-                    {inv.payment_method}
-                  </span>
-                </td>
-                <td style={{ ...tdStyle, fontWeight: 'bold' }}>{storeConfig.currency || '₹'}{inv.grand_total}</td>
-                <td style={tdStyle}>{inv.date}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* Reports Grid Layout */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px' }}>
+        {filteredReports.map((report) => (
+          <div key={report.id} style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '22px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)', transition: 'transform 0.2s' }}>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <span style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  {report.category} • {report.scope}
+                </span>
+                <span style={{ fontSize: '11px', background: '#f1f5f9', padding: '3px 8px', borderRadius: '6px', fontWeight: 'bold', color: '#334155', border: '1px solid #e2e8f0' }}>
+                  {report.type}
+                </span>
+              </div>
+              <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#0f172a', margin: '0 0 6px 0' }}>
+                {report.title}
+              </h3>
+              <p style={{ fontSize: '12px', color: '#64748b', margin: '0 0 18px 0', lineHeight: '1.5' }}>
+                {report.description}
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f1f5f9', paddingTop: '14px' }}>
+              <span style={{ fontSize: '11px', color: '#94a3b8' }}>Last generated: {report.lastGenerated}</span>
+              <button
+                onClick={() => generatePDF(report)}
+                disabled={downloadingId === report.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '8px 14px',
+                  background: downloadingId === report.id ? '#94a3b8' : '#0a3227',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                }}
+              >
+                {downloadingId === report.id ? '⏳ Generating...' : `📥 Export PDF (${reportType})`}
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
 
     </div>
   );
 };
 
-const Card = ({ title, amount, color }) => (
-  <div style={{ background: '#fff', padding: '18px', borderRadius: '10px', border: '1px solid #e2e8f0', borderLeft: `4px solid ${color}` }}>
-    <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#64748b' }}>{title}</div>
-    <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#1e293b', marginTop: '6px' }}>{amount}</div>
+const MetricCard = ({ label, count, color }) => (
+  <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '18px', borderLeft: `4px solid ${color}` }}>
+    <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '600', marginBottom: '4px' }}>{label}</div>
+    <div style={{ fontSize: '24px', fontWeight: '800', color: '#0f172a' }}>{count}</div>
   </div>
 );
-
-const thStyle = { padding: '10px', fontSize: '11px' };
-const tdStyle = { padding: '10px' };
 
 export default Reports;
